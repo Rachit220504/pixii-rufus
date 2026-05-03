@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 248, 249, 250;
+  --background-end-rgb: 255, 255, 255;
+  --amazon-dark: #131921;
+  --amazon-light: #232f3e;
+  --amazon-orange: #febd69;
+  --amazon-blue: #007185;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .chat-message {
+    @apply p-4 rounded-2xl max-w-[85%] animate-slide-in;
+  }
+  
+  .chat-message-user {
+    @apply bg-amazon-blue text-white ml-auto;
+  }
+  
+  .chat-message-assistant {
+    @apply bg-gray-100 text-gray-900 mr-auto;
+  }
+  
+  .product-card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow;
+  }
+  
+  .insight-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .insight-positive {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .insight-negative {
+    @apply bg-red-100 text-red-800;
+  }
+  
+  .rank-badge {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold;
+  }
+  
+  .rank-1 {
+    @apply bg-yellow-400 text-yellow-900;
+  }
+  
+  .rank-2 {
+    @apply bg-gray-300 text-gray-700;
+  }
+  
+  .rank-3 {
+    @apply bg-orange-300 text-orange-800;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
