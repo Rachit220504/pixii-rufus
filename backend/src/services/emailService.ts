@@ -108,9 +108,9 @@ class EmailService {
   /**
    * Send password reset email with clean HTML template
    */
-  async sendResetEmail(email: string, resetLink: string): Promise<{ success: boolean; error?: string }> {
-    const html = this.getPasswordResetTemplate(resetLink);
-    const text = this.getPasswordResetText(resetLink);
+  async sendResetEmail(email: string, resetLink: string, token?: string): Promise<{ success: boolean; error?: string }> {
+    const html = this.getPasswordResetTemplate(resetLink, token);
+    const text = this.getPasswordResetText(resetLink, token);
 
     return this.sendEmail({
       to: email,
@@ -125,13 +125,20 @@ class EmailService {
    */
   async sendPasswordResetEmail(to: string, token: string): Promise<{ success: boolean; error?: string }> {
     const resetUrl = `${config.frontendUrl || "http://localhost:3000"}/forgot-password?token=${token}`;
-    return this.sendResetEmail(to, resetUrl);
+    return this.sendResetEmail(to, resetUrl, token);
   }
 
   /**
-   * Clean HTML email template for password reset
+   * Clean HTML email template for password reset - includes both link and token
    */
-  private getPasswordResetTemplate(resetLink: string): string {
+  private getPasswordResetTemplate(resetLink: string, token?: string): string {
+    const tokenSection = token ? `
+      <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; margin: 24px 0; text-align: center;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">Or copy this reset token:</p>
+        <code style="font-family: monospace; font-size: 18px; font-weight: bold; color: #131921; background-color: #ffffff; padding: 8px 16px; border-radius: 4px; display: inline-block; letter-spacing: 1px;">${token}</code>
+      </div>
+    ` : '';
+
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -189,6 +196,8 @@ class EmailService {
         <span class="link">${resetLink}</span>
       </div>
       
+      ${tokenSection}
+      
       <div class="divider"></div>
       
       <p class="footer">
@@ -209,7 +218,13 @@ class EmailService {
   /**
    * Plain text version for email clients that don't support HTML
    */
-  private getPasswordResetText(resetLink: string): string {
+  private getPasswordResetText(resetLink: string, token?: string): string {
+    const tokenSection = token ? `
+Or copy this reset token and paste it on the reset page:
+
+Reset Token: ${token}
+` : '';
+
     return `
 Rufus AI Shopper - Reset Your Password
 
@@ -217,6 +232,7 @@ We received a request to reset your password. Click the link below to create a n
 
 ${resetLink}
 
+${tokenSection}
 This link will expire in 1 hour for security reasons.
 
 If you didn't request this reset, you can safely ignore this email. Your password won't be changed.
