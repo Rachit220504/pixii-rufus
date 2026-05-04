@@ -21,7 +21,16 @@ class EmailService {
 
   constructor() {
     this.apiKey = config.email?.resendApiKey || null;
-    this.fromEmail = config.email?.from || "onboarding@resend.dev";
+    
+    // Resend requires using onboarding@resend.dev for testing or a verified domain
+    // Cannot send from gmail.com/yahoo.com etc without domain verification
+    const configuredFrom = config.email?.from || "onboarding@resend.dev";
+    if (configuredFrom.includes("gmail.com") || configuredFrom.includes("yahoo.com") || configuredFrom.includes("hotmail.com")) {
+      console.warn(`[EmailService] Cannot use ${configuredFrom} with Resend. Using onboarding@resend.dev instead.`);
+      this.fromEmail = "onboarding@resend.dev";
+    } else {
+      this.fromEmail = configuredFrom;
+    }
     
     console.log("[EmailService] Resend API initialized:", {
       apiKey: this.apiKey ? "set (length: " + this.apiKey.length + ")" : "missing",
@@ -81,7 +90,18 @@ class EmailService {
         retryCount,
       });
 
-      // Retry once if first attempt failed
+      // Check for domain verification error
+      if (error.message?.includes("domain is not verified")) {
+        console.error("[EmailService] Domain verification required. Using onboarding@resend.dev for testing.");
+        // Auto-correct and retry once with onboarding@resend.dev
+        if (retryCount === 0 && this.fromEmail !== "onboarding@resend.dev") {
+          console.log("[EmailService] Auto-switching to onboarding@resend.dev and retrying...");
+          this.fromEmail = "onboarding@resend.dev";
+          return this.sendEmail(options, retryCount + 1);
+        }
+      }
+
+      // Retry once if first attempt failed (for other errors)
       if (retryCount === 0) {
         console.log("[EmailService] Retrying email send...");
         return this.sendEmail(options, retryCount + 1);
