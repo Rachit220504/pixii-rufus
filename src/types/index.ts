@@ -133,6 +133,14 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  metadata?: {
+    products?: ProductDisplay[];
+    topRated?: TopPick;
+    bestValue?: TopPick;
+    editorsChoice?: TopPick;
+    summary?: string;
+    query?: string;
+  };
   recommendations?: QueryResult;
 }
 

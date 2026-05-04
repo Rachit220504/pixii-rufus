@@ -79,3 +79,120 @@ export async function checkHealth(): Promise<{
   const response = await fetch(`${API_BASE_URL}/health`);
   return response.json();
 }
+
+// ============================================
+// Chat System API
+// ============================================
+
+export interface Conversation {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  metadata?: {
+    products?: any[];
+    topRated?: any;
+    bestValue?: any;
+    editorsChoice?: any;
+    summary?: string;
+    query?: string;
+  };
+  createdAt: string;
+}
+
+export async function createConversation(userId: string): Promise<{
+  success: boolean;
+  data?: Conversation;
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/conversation`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ userId }),
+  });
+  return response.json();
+}
+
+export async function getConversations(userId: string): Promise<{
+  success: boolean;
+  data?: Conversation[];
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/conversations?userId=${encodeURIComponent(userId)}`, {
+    headers: getAuthHeaders(),
+  });
+  return response.json();
+}
+
+export async function getMessages(conversationId: string): Promise<{
+  success: boolean;
+  data?: Message[];
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/messages/${encodeURIComponent(conversationId)}`, {
+    headers: getAuthHeaders(),
+  });
+  return response.json();
+}
+
+export async function sendMessage(
+  conversationId: string,
+  userId: string,
+  message: string
+): Promise<{
+  success: boolean;
+  data?: {
+    reply: string;
+    conversationId: string;
+    recommendations?: QueryResult;
+  };
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/message`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ conversationId, userId, message }),
+  });
+  return response.json();
+}
+
+export async function deleteConversation(
+  conversationId: string,
+  userId: string
+): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/conversation/${encodeURIComponent(conversationId)}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ userId }),
+  });
+  return response.json();
+}
+
+export async function updateConversationTitle(
+  conversationId: string,
+  userId: string,
+  title: string
+): Promise<{
+  success: boolean;
+  data?: { id: string; title: string };
+  error?: string;
+}> {
+  const response = await fetch(`${API_BASE_URL}/conversation/${encodeURIComponent(conversationId)}/title`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ userId, title }),
+  });
+  return response.json();
+}

@@ -7,11 +7,15 @@ import {
 import { chat } from "../controllers/chatController";
 import { authMiddleware } from "../middleware/auth";
 import authRoutes from "./auth";
+import chatRoutes from "./chat";
 
 const router = Router();
 
 // Auth routes
 router.use("/auth", authRoutes);
+
+// Chat system routes (multi-conversation)
+router.use("/", chatRoutes);
 
 // Search routes - new real-time architecture
 router.post("/search", authMiddleware, searchProducts);

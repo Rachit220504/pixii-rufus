@@ -4,6 +4,7 @@ import path from "path";
 import routes from "./src/routes";
 import { config, validateConfig } from "./src/utils/config";
 import { initPostgres } from "./src/db/postgres";
+import { queryEngine } from "./src/services/queryEngine";
 
 const app = express();
 const PORT = config.server.port;
@@ -32,6 +33,9 @@ async function startServer() {
 
     await initPostgres();
     console.log("PostgreSQL initialized");
+
+    await queryEngine.initialize();
+    console.log("QueryEngine initialized (Vector Store + Metadata Store)");
 
     app.listen(PORT, () => {
       console.log(`

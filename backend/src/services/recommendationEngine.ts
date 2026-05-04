@@ -92,6 +92,78 @@ export class RecommendationEngine {
   }
 
   /**
+   * Build recommendations from product data only (no individual reviews)
+   * Uses product rating and reviewCount from the scrape
+   */
+  async buildRecommendationsFromProductData(products: ScrapedProduct[]): Promise<RecommendationResult> {
+    console.log(`[RecommendationEngine] Building recommendations from product data for ${products.length} products`);
+
+    // Create basic insights from product data
+    const analyzedProducts: ProductRecommendation[] = [];
+
+    for (const product of products) {
+      // Create synthetic insights from product data (no individual reviews needed)
+      const insights: ReviewInsights = {
+        sentiment: product.rating >= 4 ? 'positive' : product.rating >= 3 ? 'neutral' : 'negative',
+        sentimentScore: (product.rating - 3) / 2, // Convert 1-5 rating to -1 to 1
+        pros: product.rating >= 4 ? ['Highly rated by customers'] : [],
+        cons: product.rating < 3 ? ['Lower customer satisfaction'] : [],
+        commonPhrases: [],
+        averageRating: product.rating,
+        verifiedPurchasePercentage: 85, // Estimated
+        totalReviews: product.reviewCount || 0,
+        ratingDistribution: {},
+      };
+
+      // Calculate recommendation score using product data
+      const score = this.calculateScore(product, insights);
+
+      analyzedProducts.push({
+        product,
+        reviews: [], // No individual reviews
+        insights,
+        rank: 0,
+        score,
+        tag: null,
+        reason: this.generateReason(product, insights),
+      });
+    }
+
+    // Sort by score (descending)
+    analyzedProducts.sort((a, b) => b.score - a.score);
+
+    // Assign ranks
+    analyzedProducts.forEach((p, index) => {
+      p.rank = index + 1;
+    });
+
+    // Assign tags to top products
+    const result = this.assignTags(analyzedProducts);
+
+    // Calculate summary stats using product reviewCount
+    const totalReviews = analyzedProducts.reduce((sum, p) => sum + p.product.reviewCount, 0);
+    const productsWithPrice = analyzedProducts.filter(p => p.product.price !== null);
+    const averagePrice = productsWithPrice.length > 0
+      ? productsWithPrice.reduce((sum, p) => sum + (p.product.price || 0), 0) / productsWithPrice.length
+      : 0;
+
+    console.log(`[RecommendationEngine] Complete:`, {
+      totalProducts: result.products.length,
+      topRated: result.topRated?.product.title || 'None',
+      bestValue: result.bestValue?.product.title || 'None',
+      editorsChoice: result.editorsChoice?.product.title || 'None',
+      totalReviews,
+      averagePrice: Math.round(averagePrice),
+    });
+
+    return {
+      ...result,
+      totalReviews,
+      averagePrice,
+    };
+  }
+
+  /**
    * Calculate recommendation score for a product
    */
   private calculateScore(product: ScrapedProduct, insights: ReviewInsights): number {

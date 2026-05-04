@@ -184,3 +184,27 @@ export function getToken(): string | null {
 export function isAuthenticated(): boolean {
   return !!getToken();
 }
+
+export function getUserId(): string | null {
+  const userStr = localStorage.getItem("user");
+  if (!userStr) return null;
+  
+  try {
+    const user = JSON.parse(userStr);
+    return user.id?.toString() || user.email || null;
+  } catch {
+    return null;
+  }
+}
+
+export function getUserName(): string | null {
+  const userStr = localStorage.getItem("user");
+  if (!userStr) return null;
+  
+  try {
+    const user = JSON.parse(userStr);
+    return user.firstName || user.email || null;
+  } catch {
+    return null;
+  }
+}

@@ -105,10 +105,10 @@ export class RealTimeScraper {
     const input = {
       keyword: keyword,
       maxResults: maxResults,
-      country: 'IN', // Amazon India
+      country: 'IN',
       currency: 'INR',
       language: 'en-IN',
-      scrapeReviews: false, // We'll fetch reviews separately
+      scrapeReviews: false, // Faster - fetch reviews separately for top products only
     };
 
     console.log(`[RealTimeScraper] Apify input:`, JSON.stringify(input, null, 2));
@@ -168,13 +168,40 @@ export class RealTimeScraper {
       reviewCount = parseInt(item.totalReviews);
     }
 
-    // Get image URL with fallbacks
-    let imageUrl = item.thumbnailImage || item.mainImage || item.image || item.imageUrl || '';
+    // Get image URL with fallbacks - try multiple possible fields from Apify
+    let imageUrl = item.thumbnailImage || item.mainImage || item.image || item.imageUrl || item.thumbnail || '';
+    
+    // Debug logging to see what Apify returns
+    if (!imageUrl) {
+      console.log(`[RealTimeScraper] No image URL found for ${asin}, checking available fields:`, {
+        thumbnailImage: item.thumbnailImage,
+        mainImage: item.mainImage,
+        image: item.image,
+        imageUrl: item.imageUrl,
+        thumbnail: item.thumbnail,
+        images: item.images
+      });
+    }
     
     // Ensure image URL is valid
-    if (!imageUrl || imageUrl.includes('placeholder')) {
-      // Try to construct from ASIN
-      imageUrl = `https://m.media-amazon.com/images/P/${asin}._SL300_.jpg`;
+    if (!imageUrl || imageUrl.includes('placeholder') || imageUrl === 'undefined' || imageUrl === 'null') {
+      // Try to construct from ASIN using multiple patterns
+      const imagePatterns = [
+        `https://m.media-amazon.com/images/P/${asin}._SL300_.jpg`,
+        `https://m.media-amazon.com/images/I/${asin}._SL300_.jpg`,
+        `https://images-na.ssl-images-amazon.com/images/P/${asin}._SL300_.jpg`,
+        `https://images-na.ssl-images-amazon.com/images/I/${asin}._SL300_.jpg`
+      ];
+      
+      // Use the first pattern as default
+      imageUrl = imagePatterns[0];
+      
+      console.log(`[RealTimeScraper] Constructed image URL from ASIN: ${imageUrl}`);
+    }
+    
+    // Ensure URL starts with https
+    if (imageUrl && !imageUrl.startsWith('http')) {
+      imageUrl = `https:${imageUrl}`;
     }
 
     // Get product URL
@@ -462,6 +489,80 @@ export class RealTimeScraper {
    */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Public wrapper: Scrape products using Apify (amazon.in)
+   */
+  async scrapeProducts(keyword: string, maxResults: number = 10): Promise<any[]> {
+    console.log(`[RealTimeScraper] scrapeProducts called: "${keyword}" (max: ${maxResults})`);
+    const results = await this.searchProducts(keyword, maxResults);
+    return results.map((r: any) => ({
+      asin: r.asin,
+      title: r.title,
+      brand: r.brand,
+      price: r.price,
+      rating: r.rating,
+      reviewCount: r.reviewCount,
+      imageUrl: r.imageUrl,
+      productUrl: r.productUrl,
+      category: keyword
+    }));
+  }
+
+  /**
+   * Public wrapper: Fallback HTML scraping (axios + cheerio)
+   */
+  async scrapeProductsFallback(keyword: string, maxResults: number = 10): Promise<any[]> {
+    console.log(`[RealTimeScraper] scrapeProductsFallback called: "${keyword}"`);
+    
+    try {
+      // Use the HTML-based search as fallback
+      const products = await this.scrapeWithHtml(keyword, maxResults);
+      return products.slice(0, maxResults).map((p: any) => ({
+        asin: p.asin || '',
+        title: p.title,
+        brand: p.brand || 'Generic',
+        price: p.price,
+        rating: p.rating || 0,
+        reviewCount: p.reviewCount || 0,
+        imageUrl: p.imageUrl,
+        productUrl: p.productUrl,
+        category: keyword
+      }));
+    } catch (error) {
+      console.error('[RealTimeScraper] Fallback scraping failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Public method: Scrape reviews for a specific product
+   */
+  async scrapeReviews(asin: string, maxReviews: number = 30): Promise<ScrapedReview[]> {
+    console.log(`[RealTimeScraper] scrapeReviews called: ${asin} (max: ${maxReviews})`);
+    
+    if (!asin) {
+      console.log('[RealTimeScraper] No ASIN provided, returning empty reviews');
+      return [];
+    }
+
+    try {
+      return await this.fetchReviews(asin, maxReviews);
+    } catch (error) {
+      console.error(`[RealTimeScraper] Failed to scrape reviews for ${asin}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Local sentiment analysis (no API call)
+   */
+  private analyzeSentimentLocal(content: string, rating: number): 'positive' | 'neutral' | 'negative' {
+    // Simple rule-based sentiment based on rating
+    if (rating >= 4) return 'positive';
+    if (rating <= 2) return 'negative';
+    return 'neutral';
   }
 }
 
