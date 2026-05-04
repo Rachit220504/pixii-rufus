@@ -13,26 +13,48 @@ class EmailService {
 
   constructor() {
     // Initialize transporter if email credentials are available
+    console.log("[EmailService] Initializing with config:", {
+      host: config.smtp?.host || "missing",
+      port: config.smtp?.port || 587,
+      secure: config.smtp?.secure || false,
+      user: config.smtp?.user ? "set" : "missing",
+      pass: config.smtp?.pass ? "set (length: " + config.smtp?.pass.length + ")" : "missing",
+    });
+    
     if (config.smtp?.host && config.smtp?.user && config.smtp?.pass) {
+      // Remove spaces from app password if present (Gmail app passwords)
+      const cleanPassword = config.smtp.pass.replace(/\s/g, '');
+      
       this.transporter = nodemailer.createTransport({
         host: config.smtp.host,
         port: config.smtp.port || 587,
         secure: config.smtp.secure || false,
         auth: {
           user: config.smtp.user,
-          pass: config.smtp.pass,
+          pass: cleanPassword,
         },
       });
+      
+      console.log("[EmailService] Transporter initialized successfully");
+    } else {
+      console.error("[EmailService] Missing SMTP configuration - email service disabled");
     }
   }
 
   async sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
     try {
       if (!this.transporter) {
-        return { success: false, error: "Email service not configured" };
+        console.error("[EmailService] Transporter not initialized. SMTP config:", {
+          host: config.smtp?.host ? "set" : "missing",
+          user: config.smtp?.user ? "set" : "missing",
+          pass: config.smtp?.pass ? "set (length: " + config.smtp?.pass.length + ")" : "missing",
+        });
+        return { success: false, error: "Email service not configured - check SMTP environment variables" };
       }
 
-      await this.transporter.sendMail({
+      console.log("[EmailService] Sending email to:", options.to);
+      
+      const result = await this.transporter.sendMail({
         from: config.smtp?.from || `"Rufus AI Shopper" <${config.smtp?.user}>`,
         to: options.to,
         subject: options.subject,
@@ -40,10 +62,17 @@ class EmailService {
         html: options.html,
       });
 
+      console.log("[EmailService] Email sent successfully:", result.messageId);
       return { success: true };
-    } catch (error) {
-      console.error("Email sending error:", error);
-      return { success: false, error: "Failed to send email" };
+    } catch (error: any) {
+      console.error("[EmailService] Email sending error:", {
+        message: error.message,
+        code: error.code,
+        command: error.command,
+        response: error.response,
+        responseCode: error.responseCode,
+      });
+      return { success: false, error: `Email failed: ${error.message}` };
     }
   }
 
