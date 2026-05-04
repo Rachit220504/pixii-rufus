@@ -43,10 +43,10 @@ export const config = {
     pass: process.env.SMTP_PASS || "",
     from: process.env.SMTP_FROM || "",
   },
-  // Resend API configuration (recommended for production)
+  // Brevo API configuration (Sendinblue) - for password reset emails
   email: {
-    resendApiKey: process.env.RESEND_API_KEY || "",
-    from: process.env.EMAIL_FROM || "onboarding@resend.dev",
+    brevoApiKey: process.env.BREVO_API_KEY || "",
+    from: process.env.EMAIL_FROM || "rufus.ai.project@gmail.com",
   },
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
 };

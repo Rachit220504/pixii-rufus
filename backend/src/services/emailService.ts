@@ -7,66 +7,69 @@ interface EmailOptions {
   text?: string;
 }
 
-interface ResendEmailPayload {
-  from: string;
-  to: string;
+interface BrevoEmailPayload {
+  sender: {
+    name: string;
+    email: string;
+  };
+  to: Array<{
+    email: string;
+  }>;
   subject: string;
-  html: string;
-  text?: string;
+  htmlContent: string;
+  textContent?: string;
 }
 
 class EmailService {
   private apiKey: string | null = null;
-  private fromEmail: string = "onboarding@resend.dev";
+  private senderEmail: string = "rufus.ai.project@gmail.com";
+  private senderName: string = "Rufus AI Shopper";
+  private brevoApiUrl: string = "https://api.brevo.com/v3/smtp/email";
 
   constructor() {
-    this.apiKey = config.email?.resendApiKey || null;
+    this.apiKey = config.email?.brevoApiKey || null;
+    this.senderEmail = config.email?.from || "rufus.ai.project@gmail.com";
     
-    // Resend requires using onboarding@resend.dev for testing or a verified domain
-    // Cannot send from gmail.com/yahoo.com etc without domain verification
-    const configuredFrom = config.email?.from || "onboarding@resend.dev";
-    if (configuredFrom.includes("gmail.com") || configuredFrom.includes("yahoo.com") || configuredFrom.includes("hotmail.com")) {
-      console.warn(`[EmailService] Cannot use ${configuredFrom} with Resend. Using onboarding@resend.dev instead.`);
-      this.fromEmail = "onboarding@resend.dev";
-    } else {
-      this.fromEmail = configuredFrom;
-    }
-    
-    console.log("[EmailService] Resend API initialized:", {
+    console.log("[EmailService] Brevo API initialized:", {
       apiKey: this.apiKey ? "set (length: " + this.apiKey.length + ")" : "missing",
-      fromEmail: this.fromEmail,
+      senderEmail: this.senderEmail,
+      senderName: this.senderName,
     });
 
     if (!this.apiKey) {
-      console.error("[EmailService] RESEND_API_KEY not configured - email service disabled");
+      console.error("[EmailService] BREVO_API_KEY not configured - email service disabled");
     }
   }
 
   /**
-   * Send email via Resend API with automatic retry
+   * Send email via Brevo API with automatic retry
    */
   async sendEmail(options: EmailOptions, retryCount: number = 0): Promise<{ success: boolean; error?: string }> {
     if (!this.apiKey) {
-      console.error("[EmailService] Cannot send email: RESEND_API_KEY not configured");
-      return { success: false, error: "Email service not configured - missing RESEND_API_KEY" };
+      console.error("[EmailService] Cannot send email: BREVO_API_KEY not configured");
+      return { success: false, error: "Email service not configured - missing BREVO_API_KEY" };
     }
 
-    const payload: ResendEmailPayload = {
-      from: this.fromEmail,
-      to: options.to,
+    const payload: BrevoEmailPayload = {
+      sender: {
+        name: this.senderName,
+        email: this.senderEmail,
+      },
+      to: [{ email: options.to }],
       subject: options.subject,
-      html: options.html,
-      text: options.text,
+      htmlContent: options.html,
+      textContent: options.text,
     };
 
     try {
       console.log(`[EmailService] Sending email to: ${options.to} (attempt ${retryCount + 1})`);
       
-      const response = await fetch("https://api.resend.com/emails", {
+      const response = await fetch(this.brevoApiUrl, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
+          "api-key": this.apiKey,
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
         body: JSON.stringify(payload),
       });
@@ -74,11 +77,12 @@ class EmailService {
       const result = await response.json();
 
       if (!response.ok) {
+        console.error("[EmailService] Brevo API error response:", result);
         throw new Error(result.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       console.log("[EmailService] Email sent successfully:", {
-        id: result.id,
+        messageId: result.messageId,
         to: options.to,
       });
 
@@ -87,21 +91,11 @@ class EmailService {
       console.error("[EmailService] Email sending error:", {
         message: error.message,
         code: error.code,
+        response: error.response?.data || null,
         retryCount,
       });
 
-      // Check for domain verification error
-      if (error.message?.includes("domain is not verified")) {
-        console.error("[EmailService] Domain verification required. Using onboarding@resend.dev for testing.");
-        // Auto-correct and retry once with onboarding@resend.dev
-        if (retryCount === 0 && this.fromEmail !== "onboarding@resend.dev") {
-          console.log("[EmailService] Auto-switching to onboarding@resend.dev and retrying...");
-          this.fromEmail = "onboarding@resend.dev";
-          return this.sendEmail(options, retryCount + 1);
-        }
-      }
-
-      // Retry once if first attempt failed (for other errors)
+      // Retry once if first attempt failed
       if (retryCount === 0) {
         console.log("[EmailService] Retrying email send...");
         return this.sendEmail(options, retryCount + 1);
