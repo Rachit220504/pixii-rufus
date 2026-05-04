@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json.schemastore.org/package.json",
   "name": "rufus-ai-shopper",
   "version": "1.0.0",
   "private": true,
