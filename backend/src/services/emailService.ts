@@ -25,15 +25,35 @@ class EmailService {
       // Remove spaces from app password if present (Gmail app passwords)
       const cleanPassword = config.smtp.pass.replace(/\s/g, '');
       
-      this.transporter = nodemailer.createTransport({
+      const transportConfig: any = {
         host: config.smtp.host,
         port: config.smtp.port || 587,
         secure: config.smtp.secure || false,
+        // Force IPv4 to avoid ENETUNREACH errors on Railway
+        connectionTimeout: 10000, // 10 second connection timeout
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
+        tls: {
+          rejectUnauthorized: false,
+          minVersion: 'TLSv1.2',
+        },
         auth: {
           user: config.smtp.user,
           pass: cleanPassword,
         },
-      });
+        // Use direct DNS lookup to force IPv4
+        name: 'rufus-ai-shopper',
+      };
+      
+      // For Gmail, use direct IPv4 connection
+      if (config.smtp.host.includes('gmail.com')) {
+        // Gmail SMTP with explicit IPv4
+        transportConfig.host = 'smtp.gmail.com';
+        transportConfig.port = 465; // Use SSL port instead of STARTTLS
+        transportConfig.secure = true; // Use SSL
+      }
+      
+      this.transporter = nodemailer.createTransport(transportConfig);
       
       console.log("[EmailService] Transporter initialized successfully");
     } else {
