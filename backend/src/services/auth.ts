@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import { pool, query } from "../db/postgres";
 import { config } from "../utils/config";
+import { emailService } from "./emailService";
 
 export interface User {
   id: number;
@@ -230,10 +231,10 @@ export class AuthService {
     }
   }
 
-  async forgotPassword(email: string): Promise<{ success: boolean; token?: string; error?: string }> {
+  async forgotPassword(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
       const userResult = await query("SELECT id FROM users WHERE email = $1", [email]);
-      
+
       if (userResult.rows.length === 0) {
         return { success: false, error: "User not found" };
       }
@@ -249,7 +250,19 @@ export class AuthService {
         [resetToken, expiresAt, email]
       );
 
-      return { success: true, token: resetToken };
+      // Send email with reset token
+      const emailResult = await emailService.sendPasswordResetEmail(email, resetToken);
+
+      if (!emailResult.success) {
+        console.error("Failed to send reset email:", emailResult.error);
+        // Still return success but with a warning that email failed
+        return {
+          success: true,
+          message: "Reset token generated but email delivery failed. Please contact support.",
+        };
+      }
+
+      return { success: true, message: "Password reset email sent successfully. Check your inbox." };
     } catch (error) {
       console.error("Forgot password error:", error);
       return { success: false, error: "Failed to process request" };

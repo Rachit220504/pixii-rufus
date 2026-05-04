@@ -17,17 +17,17 @@ export function LandingPage() {
 
   const features = [
     {
-      icon: <Sparkles className="w-6 h-6" />,
+      icon: <Sparkles className="w-6 h-6 text-amazon-dark dark:text-amazon-orange" />,
       title: "AI-Powered Recommendations",
       description: "Get personalized product recommendations based on real customer reviews",
     },
     {
-      icon: <Shield className="w-6 h-6" />,
+      icon: <Shield className="w-6 h-6 text-amazon-dark dark:text-amazon-orange" />,
       title: "Review Analysis",
       description: "We analyze thousands of reviews to extract pros, cons, and hidden insights",
     },
     {
-      icon: <Zap className="w-6 h-6" />,
+      icon: <Zap className="w-6 h-6 text-amazon-dark dark:text-amazon-orange" />,
       title: "Instant Answers",
       description: "Ask any shopping question and get structured answers in seconds",
     },
@@ -256,7 +256,7 @@ export function LandingPage() {
               <ShoppingBag className="w-6 h-6" />
               <span className="font-bold text-white">Rufus AI Shopper</span>
             </div>
-            <p className="text-sm">© 2024 Rufus AI. All rights reserved.</p>
+            <p className="text-sm">© 2026 Rufus AI Shopper. All rights reserved.</p>
           </div>
         </div>
       </footer>

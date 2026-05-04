@@ -110,7 +110,7 @@ export async function logout(): Promise<void> {
   localStorage.removeItem("user");
 }
 
-export async function forgotPassword(email: string): Promise<{ success: boolean; error?: string; token?: string }> {
+export async function forgotPassword(email: string): Promise<{ success: boolean; error?: string; message?: string }> {
   const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
     method: "POST",
     headers: {

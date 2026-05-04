@@ -25,14 +25,10 @@ export default function ForgotPasswordPage() {
     const result = await forgotPassword(email);
 
     if (result.success) {
-      setMessage("Check your email for reset instructions (demo: token shown in console)");
-      // For demo purposes, we'll auto-fill the token
-      if (result.token) {
-        setToken(result.token);
-        setStep("reset");
-      }
+      setMessage(result.message || "Reset instructions sent! Check your email.");
+      setStep("reset");
     } else {
-      setError(result.error || "Failed to send reset email");
+      setError(result.error || "Failed to send reset instructions");
     }
 
     setIsLoading(false);
@@ -68,13 +64,13 @@ export default function ForgotPasswordPage() {
 
   if (step === "success") {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Password reset successful!</h2>
-          <p className="text-gray-600 mb-6">Your password has been reset successfully.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Password reset successful!</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Your password has been reset successfully.</p>
           <Link
             href="/login"
             className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-amazon-dark bg-amazon-orange hover:bg-amazon-orange/90"
@@ -87,35 +83,35 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link href="/" className="flex items-center justify-center gap-2 mb-8">
           <div className="w-10 h-10 bg-amazon-orange rounded-lg flex items-center justify-center">
             <ShoppingBag className="w-6 h-6 text-amazon-dark" />
           </div>
-          <span className="font-bold text-2xl text-amazon-dark">Rufus AI</span>
+          <span className="font-bold text-2xl text-amazon-dark dark:text-white">Rufus AI</span>
         </Link>
-        <h2 className="text-center text-3xl font-bold text-gray-900">
-          {step === "email" ? "Reset your password" : "Enter new password"}
+        <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
+          {step === "email" ? "Reset your password" : "Enter reset token"}
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          {step === "email" 
+        <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+          {step === "email"
             ? "Enter your email and we'll send you reset instructions"
-            : "Enter your new password below"
+            : "Check your email for the reset token and enter your new password"
           }
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-sm rounded-2xl sm:px-10">
+        <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow-sm dark:shadow-gray-800/50 rounded-2xl sm:px-10">
           {message && (
-            <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
+            <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-lg text-sm">
               {message}
             </div>
           )}
 
           {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -123,7 +119,7 @@ export default function ForgotPasswordPage() {
           {step === "email" ? (
             <form className="space-y-6" onSubmit={handleEmailSubmit}>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Email address
                 </label>
                 <div className="mt-1 relative">
@@ -135,10 +131,10 @@ export default function ForgotPasswordPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-amazon-blue focus:border-amazon-blue sm:text-sm text-gray-900"
+                    className="appearance-none block w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-amazon-blue focus:border-amazon-blue sm:text-sm text-gray-900 dark:text-white dark:bg-gray-700"
                     placeholder="you@example.com"
                   />
-                  <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                 </div>
               </div>
 
@@ -159,7 +155,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form className="space-y-6" onSubmit={handleResetSubmit}>
               <div>
-                <label htmlFor="token" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="token" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Reset token (from email)
                 </label>
                 <input
@@ -169,13 +165,13 @@ export default function ForgotPasswordPage() {
                   required
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
-                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-amazon-blue focus:border-amazon-blue sm:text-sm text-gray-900"
+                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-amazon-blue focus:border-amazon-blue sm:text-sm text-gray-900 dark:text-white dark:bg-gray-700"
                   placeholder="Paste your reset token here"
                 />
               </div>
 
               <div>
-                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   New password
                 </label>
                 <input
@@ -185,14 +181,14 @@ export default function ForgotPasswordPage() {
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-amazon-blue focus:border-amazon-blue sm:text-sm text-gray-900"
+                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-amazon-blue focus:border-amazon-blue sm:text-sm text-gray-900 dark:text-white dark:bg-gray-700"
                   placeholder="••••••••"
                 />
-                <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Must be at least 6 characters</p>
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Confirm new password
                 </label>
                 <input
@@ -202,7 +198,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-amazon-blue focus:border-amazon-blue sm:text-sm text-gray-900"
+                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-amazon-blue focus:border-amazon-blue sm:text-sm text-gray-900 dark:text-white dark:bg-gray-700"
                   placeholder="••••••••"
                 />
               </div>
@@ -226,14 +222,14 @@ export default function ForgotPasswordPage() {
           <div className="mt-6 flex items-center justify-between">
             <Link
               href="/login"
-              className="flex items-center text-sm text-gray-500 hover:text-gray-900"
+              className="flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to sign in
             </Link>
             <Link
               href="/"
-              className="text-sm text-gray-500 hover:text-gray-900"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
             >
               Back to home
             </Link>

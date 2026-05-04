@@ -104,7 +104,7 @@ export async function forgotPassword(req: Request, res: Response) {
       });
     }
 
-    const { success, token, error } = await authService.forgotPassword(email);
+    const { success, message, error } = await authService.forgotPassword(email);
 
     if (!success) {
       return res.status(400).json({
@@ -115,8 +115,7 @@ export async function forgotPassword(req: Request, res: Response) {
 
     return res.json({
       success: true,
-      message: "Password reset email sent",
-      token,
+      message: message || "Password reset email sent",
     });
   } catch (error) {
     console.error("Forgot password error:", error);
