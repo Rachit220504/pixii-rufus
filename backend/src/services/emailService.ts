@@ -1,157 +1,217 @@
-import nodemailer from "nodemailer";
 import { config } from "../utils/config";
 
 interface EmailOptions {
   to: string;
   subject: string;
+  html: string;
   text?: string;
-  html?: string;
+}
+
+interface ResendEmailPayload {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
 }
 
 class EmailService {
-  private transporter: nodemailer.Transporter | null = null;
+  private apiKey: string | null = null;
+  private fromEmail: string = "onboarding@resend.dev";
 
   constructor() {
-    // Initialize transporter if email credentials are available
-    console.log("[EmailService] Initializing with config:", {
-      host: config.smtp?.host || "missing",
-      port: config.smtp?.port || 587,
-      secure: config.smtp?.secure || false,
-      user: config.smtp?.user ? "set" : "missing",
-      pass: config.smtp?.pass ? "set (length: " + config.smtp?.pass.length + ")" : "missing",
-    });
+    this.apiKey = config.email?.resendApiKey || null;
+    this.fromEmail = config.email?.from || "onboarding@resend.dev";
     
-    if (config.smtp?.host && config.smtp?.user && config.smtp?.pass) {
-      // Remove spaces from app password if present (Gmail app passwords)
-      const cleanPassword = config.smtp.pass.replace(/\s/g, '');
-      
-      const transportConfig: any = {
-        host: config.smtp.host,
-        port: config.smtp.port || 587,
-        secure: config.smtp.secure || false,
-        // Force IPv4 to avoid ENETUNREACH errors on Railway
-        connectionTimeout: 10000, // 10 second connection timeout
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-        tls: {
-          rejectUnauthorized: false,
-          minVersion: 'TLSv1.2',
-        },
-        auth: {
-          user: config.smtp.user,
-          pass: cleanPassword,
-        },
-        // Use direct DNS lookup to force IPv4
-        name: 'rufus-ai-shopper',
-      };
-      
-      // For Gmail, use direct IPv4 connection
-      if (config.smtp.host.includes('gmail.com')) {
-        // Gmail SMTP with explicit IPv4
-        transportConfig.host = 'smtp.gmail.com';
-        transportConfig.port = 465; // Use SSL port instead of STARTTLS
-        transportConfig.secure = true; // Use SSL
-      }
-      
-      this.transporter = nodemailer.createTransport(transportConfig);
-      
-      console.log("[EmailService] Transporter initialized successfully");
-    } else {
-      console.error("[EmailService] Missing SMTP configuration - email service disabled");
+    console.log("[EmailService] Resend API initialized:", {
+      apiKey: this.apiKey ? "set (length: " + this.apiKey.length + ")" : "missing",
+      fromEmail: this.fromEmail,
+    });
+
+    if (!this.apiKey) {
+      console.error("[EmailService] RESEND_API_KEY not configured - email service disabled");
     }
   }
 
-  async sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
-    try {
-      if (!this.transporter) {
-        console.error("[EmailService] Transporter not initialized. SMTP config:", {
-          host: config.smtp?.host ? "set" : "missing",
-          user: config.smtp?.user ? "set" : "missing",
-          pass: config.smtp?.pass ? "set (length: " + config.smtp?.pass.length + ")" : "missing",
-        });
-        return { success: false, error: "Email service not configured - check SMTP environment variables" };
-      }
+  /**
+   * Send email via Resend API with automatic retry
+   */
+  async sendEmail(options: EmailOptions, retryCount: number = 0): Promise<{ success: boolean; error?: string }> {
+    if (!this.apiKey) {
+      console.error("[EmailService] Cannot send email: RESEND_API_KEY not configured");
+      return { success: false, error: "Email service not configured - missing RESEND_API_KEY" };
+    }
 
-      console.log("[EmailService] Sending email to:", options.to);
+    const payload: ResendEmailPayload = {
+      from: this.fromEmail,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    };
+
+    try {
+      console.log(`[EmailService] Sending email to: ${options.to} (attempt ${retryCount + 1})`);
       
-      const result = await this.transporter.sendMail({
-        from: config.smtp?.from || `"Rufus AI Shopper" <${config.smtp?.user}>`,
-        to: options.to,
-        subject: options.subject,
-        text: options.text,
-        html: options.html,
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
-      console.log("[EmailService] Email sent successfully:", result.messageId);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      console.log("[EmailService] Email sent successfully:", {
+        id: result.id,
+        to: options.to,
+      });
+
       return { success: true };
     } catch (error: any) {
       console.error("[EmailService] Email sending error:", {
         message: error.message,
         code: error.code,
-        command: error.command,
-        response: error.response,
-        responseCode: error.responseCode,
+        retryCount,
       });
+
+      // Retry once if first attempt failed
+      if (retryCount === 0) {
+        console.log("[EmailService] Retrying email send...");
+        return this.sendEmail(options, retryCount + 1);
+      }
+
       return { success: false, error: `Email failed: ${error.message}` };
     }
   }
 
-  async sendPasswordResetEmail(to: string, token: string): Promise<{ success: boolean; error?: string }> {
-    const resetUrl = `${config.frontendUrl || "http://localhost:3000"}/forgot-password?token=${token}`;
-
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
-        <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <h2 style="color: #131921; margin-bottom: 20px;">Password Reset Request</h2>
-          <p style="color: #333; font-size: 16px; line-height: 1.5;">
-            You requested a password reset for your Rufus AI Shopper account. Use the token below to reset your password:
-          </p>
-          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-            <code style="font-size: 18px; font-weight: bold; color: #007185; letter-spacing: 1px;">${token}</code>
-          </div>
-          <p style="color: #333; font-size: 16px; line-height: 1.5;">
-            Or click the link below to reset your password:
-          </p>
-          <div style="text-align: center; margin: 25px 0;">
-            <a href="${resetUrl}" 
-               style="background-color: #febd69; color: #131921; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
-              Reset Password
-            </a>
-          </div>
-          <p style="color: #666; font-size: 14px; line-height: 1.5; margin-top: 30px;">
-            This token will expire in 1 hour. If you didn't request this reset, please ignore this email.
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px; text-align: center;">
-            Rufus AI Shopper - Your AI Shopping Assistant
-          </p>
-        </div>
-      </div>
-    `;
-
-    const text = `
-Password Reset Request
-
-You requested a password reset for your Rufus AI Shopper account.
-
-Your reset token: ${token}
-
-Or use this link: ${resetUrl}
-
-This token will expire in 1 hour.
-
-If you didn't request this reset, please ignore this email.
-
-Rufus AI Shopper - Your AI Shopping Assistant
-    `;
+  /**
+   * Send password reset email with clean HTML template
+   */
+  async sendResetEmail(email: string, resetLink: string): Promise<{ success: boolean; error?: string }> {
+    const html = this.getPasswordResetTemplate(resetLink);
+    const text = this.getPasswordResetText(resetLink);
 
     return this.sendEmail({
-      to,
+      to: email,
       subject: "Reset Your Password - Rufus AI Shopper",
-      text,
       html,
+      text,
     });
+  }
+
+  /**
+   * Send password reset email (legacy compatibility)
+   */
+  async sendPasswordResetEmail(to: string, token: string): Promise<{ success: boolean; error?: string }> {
+    const resetUrl = `${config.frontendUrl || "http://localhost:3000"}/forgot-password?token=${token}`;
+    return this.sendResetEmail(to, resetUrl);
+  }
+
+  /**
+   * Clean HTML email template for password reset
+   */
+  private getPasswordResetTemplate(resetLink: string): string {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your Password</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; }
+    .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+    .card { background-color: #ffffff; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .logo { text-align: center; margin-bottom: 24px; }
+    .logo-text { font-size: 24px; font-weight: bold; color: #131921; }
+    .logo-highlight { color: #febd69; }
+    h1 { color: #131921; font-size: 24px; font-weight: 600; margin: 0 0 16px 0; text-align: center; }
+    p { color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0; text-align: center; }
+    .button-container { text-align: center; margin: 32px 0; }
+    .button { display: inline-block; background-color: #febd69; color: #131921; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; transition: background-color 0.2s; }
+    .button:hover { background-color: #f5b057; }
+    .link-container { text-align: center; margin: 24px 0; }
+    .link { color: #007185; font-size: 14px; word-break: break-all; }
+    .divider { border-top: 1px solid #e5e7eb; margin: 32px 0; }
+    .footer { text-align: center; color: #9ca3af; font-size: 14px; }
+    .expiry { background-color: #fef3c7; border-radius: 8px; padding: 12px 16px; margin: 24px 0; text-align: center; color: #92400e; font-size: 14px; }
+    @media (max-width: 480px) {
+      .card { padding: 24px; }
+      h1 { font-size: 20px; }
+      p { font-size: 14px; }
+      .button { padding: 12px 24px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="logo">
+        <span class="logo-text">Rufus<span class="logo-highlight">AI</span></span>
+      </div>
+      
+      <h1>Reset Your Password</h1>
+      
+      <p>We received a request to reset your password. Click the button below to create a new password for your account.</p>
+      
+      <div class="button-container">
+        <a href="${resetLink}" class="button">Reset Password</a>
+      </div>
+      
+      <div class="expiry">
+        This link will expire in 1 hour for security reasons.
+      </div>
+      
+      <p style="font-size: 14px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+      
+      <div class="link-container">
+        <span class="link">${resetLink}</span>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <p class="footer">
+        Didn't request this reset? You can safely ignore this email.<br>
+        Your password won't be changed.
+      </p>
+      
+      <div style="text-align: center; margin-top: 24px; color: #9ca3af; font-size: 12px;">
+        Rufus AI Shopper - Your AI Shopping Assistant
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+  }
+
+  /**
+   * Plain text version for email clients that don't support HTML
+   */
+  private getPasswordResetText(resetLink: string): string {
+    return `
+Rufus AI Shopper - Reset Your Password
+
+We received a request to reset your password. Click the link below to create a new password:
+
+${resetLink}
+
+This link will expire in 1 hour for security reasons.
+
+If you didn't request this reset, you can safely ignore this email. Your password won't be changed.
+
+---
+Rufus AI Shopper - Your AI Shopping Assistant
+    `.trim();
   }
 }
 
 export const emailService = new EmailService();
+

@@ -34,6 +34,7 @@ export const config = {
     topK: 20,
     minSimilarity: 0.3,
   },
+  // Legacy SMTP config (kept for backwards compatibility)
   smtp: {
     host: process.env.SMTP_HOST || "",
     port: parseInt(process.env.SMTP_PORT || "587"),
@@ -41,6 +42,11 @@ export const config = {
     user: process.env.SMTP_USER || "",
     pass: process.env.SMTP_PASS || "",
     from: process.env.SMTP_FROM || "",
+  },
+  // Resend API configuration (recommended for production)
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY || "",
+    from: process.env.EMAIL_FROM || "onboarding@resend.dev",
   },
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
 };
